@@ -57,7 +57,7 @@ This guide walks you through setting up and running all GasGuard services from s
 ## Step 1: Clone the Repository
 
 ```bash
-git clone https://github.com/SanjayaWeerasinghe/GasGuard.git
+git clone https://github.com/<your-username>/GasGuard.git
 cd GasGuard
 ```
 

@@ -39,7 +39,7 @@ Simulator (:5001)┘    │          │              └── Scenario Dashboa
 
 ```bash
 # Clone
-git clone https://github.com/SanjayaWeerasinghe/GasGuard.git
+git clone https://github.com/<your-username>/GasGuard.git
 cd GasGuard
 
 # Configure
@@ -101,4 +101,4 @@ GasGuard/
 
 ## Author
 
-Sanjaya Weerasinghe
+GasGuard Team
