@@ -1,0 +1,1146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GasGuard – Blockchain Ledger & History</title>
+
+<style>
+/* -------------------------------------------------- */
+/* IMPORT MAIN DASHBOARD THEME VARIABLES              */
+/* -------------------------------------------------- */
+:root {
+    --gg-bg: #050f24;
+    --gg-surface: #0b1731;
+    --gg-surface-soft: #101c3b;
+    --gg-border-soft: #1f2b4d;
+    --gg-text-main: #f5f7ff;
+    --gg-text-sub: #a6b0d8;
+    --gg-accent: #4ade80;
+    --gg-accent-soft: rgba(74,222,128,0.12);
+    --gg-danger: #fb7185;
+    --gg-warning: #fbbf24;
+    --gg-info: #38bdf8;
+    --gg-card-radius: 16px;
+    --gg-gap: 18px;
+    --gg-shadow: 0 18px 40px rgba(0,0,0,0.45);
+    --gg-font: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+/* -------------------------------------------------- */
+/* GLOBAL STYLES                                       */
+/* -------------------------------------------------- */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: var(--gg-font);
+    background: radial-gradient(circle at top, #0e2346 0, #050b19 60%, #020617 100%);
+    color: var(--gg-text-main);
+    min-height: 100vh;
+    padding: 20px;
+}
+
+.container {
+    max-width: 1320px;
+    margin: 0 auto;
+}
+
+/* -------------------------------------------------- */
+/* HEADER + TITLE                                      */
+/* -------------------------------------------------- */
+
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: var(--gg-gap);
+}
+
+.page-title h1 {
+    font-size: 26px;
+    margin: 0;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+}
+
+.page-title p {
+    font-size: 12px;
+    margin-top: 6px;
+    color: var(--gg-text-sub);
+    max-width: 620px;
+}
+
+.smart-log {
+    margin-top: 12px;
+    display: inline-block;
+    background: var(--gg-accent-soft);
+    border: 1px solid var(--gg-accent);
+    color: var(--gg-accent);
+    padding: 6px 14px;
+    border-radius: 999px;
+    font-size: 12px;
+}
+
+/* BACK LINK */
+.back-link {
+    font-size: 12px;
+    padding: 8px 14px;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--gg-border-soft);
+    color: var(--gg-text-sub);
+    backdrop-filter: blur(6px);
+    transition: 0.25s ease-in-out;
+}
+.back-link:hover {
+    background: rgba(255,255,255,0.12);
+    color: var(--gg-text-main);
+}
+
+/* -------------------------------------------------- */
+/* CARD / PANEL (MATCHING gg-panel STYLE)              */
+/* -------------------------------------------------- */
+
+.card {
+    background: linear-gradient(135deg, var(--gg-surface) 0%, #050b19 100%);
+    border-radius: var(--gg-card-radius);
+    padding: 16px 18px 20px;
+    border: 1px solid rgba(148,163,184,0.25);
+    box-shadow: var(--gg-shadow);
+    margin-bottom: var(--gg-gap);
+}
+
+.card h2,
+.card h3 {
+    margin: 0 0 8px;
+    font-size: 15px;
+    letter-spacing: 0.1em;
+    color: #e5e7ff;
+    text-transform: uppercase;
+}
+
+.legend {
+    font-size: 12px;
+    color: var(--gg-text-sub);
+    margin-bottom: 8px;
+}
+
+/* -------------------------------------------------- */
+/* METRIC GRID (UPGRADED TO MATCH MAIN)                */
+/* -------------------------------------------------- */
+
+.metric-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: var(--gg-gap);
+}
+
+.metric-card {
+    background: rgba(255,255,255,0.04);
+    border-radius: 12px;
+    border: 1px solid var(--gg-border-soft);
+    padding: 14px;
+    box-shadow: var(--gg-shadow);
+}
+
+.metric-card h4 {
+    margin: 0 0 4px;
+    font-size: 12px;
+    color: var(--gg-text-sub);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+}
+
+.metric-card p {
+    margin: 0;
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--gg-text-main);
+}
+
+.metric-card span {
+    font-size: 11px;
+    color: var(--gg-text-sub);
+}
+
+/* Border colors consistent with main.html */
+.green-border { border-left: 4px solid #4ade80; }
+.orange-border { border-left: 4px solid #fb923c; }
+.blue-border { border-left: 4px solid #38bdf8; }
+.purple-border { border-left: 4px solid #8b5cf6; }
+.teal-border { border-left: 4px solid #14b8a6; }
+.red-border { border-left: 4px solid #ef4444; }
+.violet-border { border-left: 4px solid #a855f7; }
+.cyan-border { border-left: 4px solid #06b6d4; }
+
+/* -------------------------------------------------- */
+/* ZONE MAP / SPATIAL INSIGHTS                         */
+/* -------------------------------------------------- */
+.zone-panel {
+  position: relative;
+  z-index: 50;  
+  z-index: 9999;           /* FORCE ABOVE ALL */
+  pointer-events: auto;    /* ENSURE CLICKABLE */
+
+  margin-top: 20px;
+  padding: 18px 22px;
+  max-width: 520px;
+  border-radius: 18px;
+  background: linear-gradient(135deg, #0b1731, #020617);
+  border: 1px solid rgba(148,163,184,0.22);
+  box-shadow: 0 16px 36px rgba(0,0,0,0.45);
+  outline: 2px solid red;
+}
+
+
+.zone-grid {
+    display: flex;
+    gap: var(--gg-gap);
+}
+
+.zone-cell {
+    padding: 20px 0;
+    border-radius: 14px;
+    text-align: center;
+    font-size: 14px;
+    font-weight: 600;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--gg-border-soft);
+    box-shadow: var(--gg-shadow);
+    transition: 0.3s ease;
+}
+
+.zone-low {
+    border-color: #4ade80;
+    box-shadow: 0 0 14px rgba(74,222,128,0.4);
+}
+
+.zone-med {
+    border-color: #fbbf24;
+    box-shadow: 0 0 14px rgba(251,191,36,0.4);
+}
+
+.zone-high {
+    border-color: #fb7185;
+    box-shadow: 0 0 14px rgba(251,113,133,0.5);
+}
+
+
+.zone-panel * {
+  pointer-events: auto;
+}
+/* -------------------------------------------------- */
+/* FILTER BUTTONS (MATCH MAIN CHIPS)                   */
+/* -------------------------------------------------- */
+
+.filters button {
+    font-size: 12px;
+    padding: 6px 14px;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid var(--gg-border-soft);
+    color: var(--gg-text-main);
+    cursor: pointer;
+    transition: 0.2s ease;
+}
+
+.filters button.active {
+    background: var(--gg-accent-soft);
+    border-color: var(--gg-accent);
+    color: var(--gg-accent);
+    box-shadow: 0 0 14px rgba(74,222,128,0.4);
+}
+
+.filters button:hover {
+    background: rgba(255,255,255,0.1);
+}
+
+/* -------------------------------------------------- */
+/* TABLES (UPGRADED DARK THEME)                        */
+/* -------------------------------------------------- */
+
+.table-wrapper {
+    background: var(--gg-surface-soft);
+    border-radius: var(--gg-card-radius);
+    border: 1px solid var(--gg-border-soft);
+    box-shadow: var(--gg-shadow);
+    overflow: auto;
+    max-height: 430px;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+}
+
+thead {
+    background: rgba(148,163,184,0.08);
+    position: sticky;
+    top: 0;
+}
+
+th {
+    padding: 10px;
+    color: var(--gg-text-sub);
+    font-weight: 600;
+    letter-spacing: 0.08em;
+}
+
+td {
+    padding: 10px;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+
+tbody tr:nth-child(even) {
+    background: rgba(255,255,255,0.03);
+}
+
+.status-chip {
+    padding: 2px 10px;
+    border-radius: 999px;
+    font-size: 11px;
+}
+
+.status-normal {
+    background: rgba(74,222,128,0.1);
+    color: var(--gg-accent);
+}
+
+.status-alert {
+    background: rgba(251,113,133,0.15);
+    color: #fb7185;
+}
+
+.hash-short {
+    font-family: "JetBrains Mono", monospace;
+    opacity: 0.8;
+}
+
+/* -------------------------------------------------- */
+/* EMPTY STATES                                        */
+/* -------------------------------------------------- */
+
+.empty-state {
+    text-align: center;
+    padding: 20px;
+    color: var(--gg-text-sub);
+    font-size: 12px;
+}
+
+/* -------------------------------------------------- */
+/* RESPONSIVE FIXES                                    */
+/* -------------------------------------------------- */
+
+@media (max-width: 900px) {
+    .metric-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 600px) {
+    .metric-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* === LAYOUT FIXES FOR NETWORK SUMMARY + SPATIAL SECTION === */
+
+.grid-2 {
+    display: grid;
+    grid-template-columns: minmax(0, 2.1fr) minmax(0, 1.4fr);
+    gap: var(--gg-gap);
+    margin-bottom: var(--gg-gap);
+}
+
+/* --- Spatial & Alert Insights layout --- */
+
+.zone-grid {
+    display: flex;
+    gap: 12px;
+    align-items: stretch;
+    margin-top: 8px;
+     position: relative;
+  z-index: 1;
+}
+
+.zone-mini-map {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+    flex: 1;
+    position: relative;
+  z-index: 1;
+}
+
+.zone-stats {
+    flex: 1.3;
+    font-size: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    position: relative;
+  z-index: 1;
+}
+
+.zone-row {
+    padding: 6px 8px;
+    border-radius: 10px;
+    background: rgba(255,255,255,0.03);
+}
+
+.zone-row-title {
+    font-weight: 600;
+    margin-bottom: 2px;
+}
+
+/* === FILTERS + SEARCH ROW (READINGS TABLE CARD) === */
+
+.filters {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+}
+
+.filters-left {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.search-box input {
+    padding: 6px 10px;
+    border-radius: 999px;
+    border: 1px solid var(--gg-border-soft);
+    background: rgba(15,23,42,0.9);
+    color: var(--gg-text-main);
+    font-size: 12px;
+    min-width: 210px;
+    outline: none;
+}
+
+/* === FOOTNOTE TEXT UNDER TABLE === */
+
+.footnote {
+    margin-top: 12px;
+    font-size: 12px;
+    color: var(--gg-text-sub);
+    line-height: 1.5;
+}
+
+.highlight {
+    color: var(--gg-accent);
+    font-weight: 600;
+}
+.bc-mode-banner {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: rgba(168,85,247,0.12);
+  border: 1px solid rgba(168,85,247,0.45);
+  color: #e9d5ff;
+  font-size: 11px;
+  margin-bottom: 16px;
+}
+
+.bc-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #a855f7;
+  box-shadow: 0 0 0 3px rgba(168,85,247,0.25);
+}
+.bc-status-normal {
+  background: rgba(34,197,94,0.15);
+  color: #bbf7d0;
+}
+
+.bc-status-alert {
+  background: rgba(245,158,11,0.18);
+  color: #fde68a;
+}
+
+.bc-status-critical {
+  background: rgba(220,38,38,0.18);
+  color: #fecaca;
+}
+.bc-footnote {
+  margin-top: 14px;
+  font-size: 11px;
+  color: var(--gg-text-sub);
+  max-width: 760px;
+  line-height: 1.5;
+}
+.zone-safe {
+  border-color: #22c55e;
+  box-shadow: 0 0 16px rgba(34,197,94,0.4);
+}
+
+.zone-warning {
+  border-color: #f59e0b;
+  box-shadow: 0 0 16px rgba(245,158,11,0.4);
+}
+
+.zone-critical {
+  border-color: #dc2626;
+  box-shadow: 0 0 18px rgba(220,38,38,0.5);
+}
+
+
+.zone-panel.hidden {
+  display: none;
+}
+
+/* ---------- Zone Header ---------- */
+.zone-header {
+ display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.zone-title {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #e5e7ff;
+}
+
+.zone-subtitle {
+  font-size: 11px;
+  color: var(--gg-text-sub);
+}
+
+/* ---------- Zone Meta ---------- */
+.zone-meta {
+  display: flex;
+  gap: 28px;
+  margin-bottom: 16px;
+}
+
+.zone-meta span {
+  display: block;
+  font-size: 11px;
+  color: var(--gg-text-sub);
+}
+
+.zone-meta b {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--gg-text-main);
+}
+
+/* ---------- Zone Actions ---------- */
+.zone-actions {
+  margin-top: 10px;
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.zone-panel .gg-btn {
+  font-size: 12px;
+  padding: 8px 16px;
+  border-radius: 999px;
+  min-width: 180px;
+}
+
+/* ---------- Zone Note ---------- */
+.zone-note {
+  margin-top: 12px;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--gg-text-sub);
+}
+
+/* ---------- Zone Grid Cells (Clickable) ---------- */
+.zone-cell {
+  cursor: pointer;
+  pointer-events: auto;
+  position: relative;
+  z-index: 2;
+  transition: transform 0.25s ease, background 0.25s ease;
+}
+
+.zone-cell:hover {
+  transform: translateY(-2px);
+  background: rgba(255,255,255,0.06);
+}
+.zone-close {
+  background: none;
+  border: none;
+  color: var(--gg-text-sub);
+  font-size: 14px;
+  cursor: pointer;
+  padding: 4px 6px;
+  line-height: 1;
+}
+
+.zone-close:hover {
+  color: var(--gg-text-main);
+}
+.zone-panel button,
+.zone-panel .gg-btn {
+  pointer-events: auto !important;
+  position: relative;
+  z-index: 10000;
+  cursor: pointer;
+}
+
+</style>
+
+</head>
+
+<body data-context="main">
+    <div class="container">
+    <!-- Header -->
+   <div class="page-header">
+    <div class="page-title">
+        <h1>Blockchain Ledger & History</h1>
+
+        <p>
+            Complete tamper-proof record of all gas readings stored on the Ethereum-like
+            blockchain (Ganache). Each row below is an immutable transaction.
+        </p>
+
+        <!-- Add margin here using a class -->
+        <span class="badge smart-log">Smart Contract Log – Read-only</span>
+    </div>
+    <!-- BLOCKCHAIN MODE BANNER -->
+<div class="bc-mode-banner">
+  <span class="bc-dot"></span>
+  <strong>Blockchain Mode:</strong> Private Ethereum (Ganache) – Alert-Only Immutable Logging
+</div>
+
+    <div class="header-right">
+        <a href="main.html" class="back-link">
+            ⬅ Back to Live Dashboard
+        </a>
+    </div>
+</div>
+
+    <!-- Top summary -->
+    <div class="grid-2">
+        <div class="card">
+            <h2>Network Summary</h2>
+            <p class="legend" style="margin-bottom:10px;">
+                This section gives a quick health overview of the blockchain network and how GasGuard
+                is using it.
+            </p>
+            <div class="metric-grid">
+
+    <div class="metric-card green-border">
+        <h4>Total Readings Logged</h4>
+        <p id="totalReadings">--</p>
+        <span>All values ever written to the contract</span>
+    </div>
+
+    <div class="metric-card orange-border">
+        <h4>Total Alerts</h4>
+        <p id="totalAlerts">--</p>
+        <span>Readings stored as “Alert”</span>
+    </div>
+
+    <div class="metric-card blue-border">
+        <h4>Latest Block</h4>
+        <p id="latestBlockNum">--</p>
+        <span>From Ganache / web3</span>
+    </div>
+
+    <div class="metric-card purple-border">
+        <h4>Chain Gas Price (wei)</h4>
+        <p id="latestGasPrice">--</p>
+        <span>Approx. cost per operation</span>
+    </div>
+
+    <div class="metric-card teal-border">
+        <h4>Avg Gas Value (Last 40)</h4>
+        <p id="avgLast40">--</p>
+        <span>Mean ppm across latest readings</span>
+    </div>
+
+    <div class="metric-card red-border">
+        <h4>Alerts (Last 40)</h4>
+        <p id="alertsLast40">--</p>
+        <span>Recent alert distribution</span>
+    </div>
+
+    <div class="metric-card violet-border">
+        <h4>Last Alert Time</h4>
+        <p id="lastAlertTime">--</p>
+        <span>Most recent danger event</span>
+    </div>
+
+    <div class="metric-card cyan-border">
+        <h4>Total Blocks Processed</h4>
+        <p id="totalBlocks">--</p>
+        <span>Blockchain activity summary</span>
+    </div>
+
+</div>
+
+        </div>
+
+       <div class="card">
+    <h3>Spatial & Alert Insights</h3>
+    <p class="legend">
+        High-level view of where recent alerts are happening inside the premises.
+        Four Main logical zones (A–D) to illustrate localized detection.
+    </p><br>
+
+    <div class="zone-grid">
+        <!-- Mini "map" – 4 zones -->
+        <div class="zone-mini-map">
+            <div id="zoneA-cell" class="zone-cell zone-warning" data-zone="A" onclick="openZonePanel('A')">Zone A</div>
+            <div id="zoneB-cell" class="zone-cell zone-warning" data-zone="B" onclick="openZonePanel('B')">Zone B</div>
+            <div id="zoneC-cell" class="zone-cell zone-warning" data-zone="C" onclick="openZonePanel('C')">Zone C</div>
+            <div id="zoneD-cell" class="zone-cell zone-warning" data-zone="D" onclick="openZonePanel('D')">Zone D</div>
+        </div>
+
+        <!-- Per-zone stats -->
+        <div class="zone-stats">
+            <div class="zone-row">
+                <div class="zone-row-title">Zone A</div>
+                <div>Alerts (last 40 readings): <span id="zoneA-alerts">0</span></div>
+                <div>Last reading: 
+                    <span id="zoneA-value">--</span> ppm · 
+                    <span id="zoneA-time">--</span>
+                </div>
+            </div>
+            <div class="zone-row">
+                <div class="zone-row-title">Zone B</div>
+                <div>Alerts (last 40 readings): <span id="zoneB-alerts">0</span></div>
+                <div>Last reading: 
+                    <span id="zoneB-value">--</span> ppm · 
+                    <span id="zoneB-time">--</span>
+                </div>
+            </div>
+            <div class="zone-row">
+                <div class="zone-row-title">Zone C</div>
+                <div>Alerts (last 40 readings): <span id="zoneC-alerts">0</span></div>
+                <div>Last reading: 
+                    <span id="zoneC-value">--</span> ppm · 
+                    <span id="zoneC-time">--</span>
+                </div>
+            </div>
+            <div class="zone-row">
+                <div class="zone-row-title">Zone D</div>
+                <div>Alerts (last 40 readings): <span id="zoneD-alerts">0</span></div>
+                <div>Last reading: 
+                    <span id="zoneD-value">--</span> ppm · 
+                    <span id="zoneD-time">--</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    <br>
+</div>
+
+    </div>
+ <div id="zonePanel" class="zone-panel hidden">
+
+  <div class="zone-header">
+    <span class="zone-title">Zone A</span>
+    <span class="zone-subtitle">Localized Controls</span>
+        <button class="zone-close" onclick="closeZonePanel()">✕</button>
+  </div>
+
+  <div class="zone-meta">
+    <div>
+      <span>Last Reading</span>
+      <b>-- ppm</b>
+    </div>
+    <div>
+      <span>Alerts (last 40)</span>
+      <b>0</b>
+    </div>
+  </div>
+
+  <div class="zone-actions">
+    <button class="gg-btn success">Start Ventilation (Zone)</button>
+    <button class="gg-btn neutral">Stop Ventilation (Zone)</button>
+  </div>
+
+  <p class="zone-note">
+    Zone-level controls are executed at the logic layer.
+    Physical actuation will be enabled after hardware integration.
+  </p>
+
+</div><br>
+
+    <!-- Readings table -->
+    <div class="card" style="margin-top:10px;">
+        <div class="filters">
+            <div class="filters-left">
+                <button id="filter-all" class="active" onclick="setFilter('all')">All Readings</button>
+                <button id="filter-alert" onclick="setFilter('alert')">Alerts Only</button>
+            </div>
+            <div class="search-box">
+                <input id="searchBox" type="text" placeholder="Filter by status / tx hash / block..."
+                       oninput="applySearch()">
+            </div>
+        </div>
+
+        <div class="table-wrapper">
+            <table id="readingsTable">
+                <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Value</th>
+                    <th>Status</th>
+                    <th>On-chain Timestamp</th>
+                    <th>Block</th>
+                    <th>Tx Hash (short)</th>
+                </tr>
+                </thead>
+                <tbody id="readingsBody">
+                <!-- filled by JS -->
+                </tbody>
+            </table>
+        </div>
+
+        <div class="footnote">
+            <span class="highlight">How to read this:</span>  
+            Row = “one write to the smart contract”.  
+            <b>Value</b> = gas level sent by sensor / simulator.  
+            <b>Status</b> = "Normal" or "Alert".  
+            <b>On-chain timestamp</b> = stored in Solidity.  
+            <b>Block</b> + <b>Tx hash</b> = cryptographic proof that this entry exists on the ledger.
+        </div>
+    </div>
+
+    <!-- Raw events (advanced) -->
+    <div class="card" style="margin-top:12px;">
+        <h3>Raw Smart Contract Events (NewReading)</h3>
+        <p class="legend" style="margin-bottom:8px;">
+            This is the direct event log from the smart contract. It shows how Ethereum “sees” each reading.
+        </p>
+
+        <div class="table-wrapper" style="max-height:280px;">
+            <table id="eventsTable">
+                <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Block</th>
+                    <th>Tx Hash</th>
+                    <th>Value</th>
+                    <th>Status</th>
+                    <th>Event Index</th>
+                </tr>
+                </thead>
+                <tbody id="eventsBody">
+                <!-- filled by JS -->
+                </tbody>
+            </table>
+        </div>
+        
+    </div>
+         <p class="bc-footnote">
+  Only critical safety events are recorded on the blockchain to ensure immutability,
+  auditability, and regulatory compliance without impacting real-time system performance.
+</p>
+</div>
+
+<script>
+    const API_BASE = "http://127.0.0.1:3001";
+
+    let allReadings = [];
+    let currentFilter = "all";
+    const ZONE_KEYS = ["A", "B", "C", "D"];   // 4 logical zones
+
+    // ----------- Helpers -----------
+    function formatTimestamp(ts) {
+        if (!ts || ts === "0") return "--";
+        const ms = Number(ts) * 1000;
+        if (Number.isNaN(ms)) return "--";
+        return new Date(ms).toLocaleString();
+    }
+
+    function shortHash(h) {
+        if (!h) return "--";
+        return h.substring(0, 8) + "..." + h.substring(h.length - 6);
+    }
+
+    function statusClass(status) {
+        if (!status) return "";
+        if (status.toLowerCase() === "alert") return "status-chip status-alert";
+        return "status-chip status-normal";
+    }
+
+    function setFilter(filter) {
+        currentFilter = filter;
+        document.getElementById("filter-all").classList.toggle("active", filter === "all");
+        document.getElementById("filter-alert").classList.toggle("active", filter === "alert");
+        renderReadings();
+    }
+
+    function applySearch() {
+        renderReadings();
+    }
+
+    // ----------- Load summary -----------
+    async function loadSummary() {
+        try {
+            const [countRes, alertsRes, blockRes] = await Promise.all([
+                fetch(`${API_BASE}/count`),
+                fetch(`${API_BASE}/alerts`),
+                fetch(`${API_BASE}/block-info`)
+            ]);
+
+            const countData = await countRes.json();
+            const alertsData = await alertsRes.json();
+            const blockData = await blockRes.json();
+
+            document.getElementById("sum-total").innerText = countData.total ?? "--";
+            document.getElementById("sum-alerts").innerText = alertsData.length ?? "0";
+            document.getElementById("sum-block").innerText = blockData.blockNumber ?? "--";
+            document.getElementById("sum-gasprice").innerText = blockData.gasPrice ?? "--";
+        } catch (err) {
+            console.error("Summary load error:", err);
+        }
+    }
+
+    // ----------- Load readings -----------
+    async function loadReadings() {
+        try {
+            const res = await fetch(`${API_BASE}/all`);
+            const data = await res.json();
+
+            // latest first
+            allReadings = (data || []).slice().reverse();
+renderReadings();
+computeSpatialInsights();
+        } catch (err) {
+            console.error("Readings load error:", err);
+            const body = document.getElementById("readingsBody");
+            body.innerHTML = `<tr><td colspan="6" class="empty-state">
+                Could not load readings from backend.
+            </td></tr>`;
+        }
+    }
+
+    function renderReadings() {
+        const body = document.getElementById("readingsBody");
+        body.innerHTML = "";
+
+        if (!allReadings.length) {
+            body.innerHTML = `<tr><td colspan="6" class="empty-state">
+                No readings stored on chain yet. Trigger the simulator / hardware to create entries.
+            </td></tr>`;
+            return;
+        }
+
+        const search = document.getElementById("searchBox").value.toLowerCase();
+
+        const filtered = allReadings.filter((r) => {
+            if (currentFilter === "alert" && r.status !== "Alert") return false;
+
+            const combined = [
+                r.status,
+                r.value,
+                r.blockNumber,
+                r.txHash
+            ].join(" ").toLowerCase();
+
+            return combined.includes(search);
+        });
+
+        if (!filtered.length) {
+            body.innerHTML = `<tr><td colspan="6" class="empty-state">
+                No records match the current filter/search.
+            </td></tr>`;
+            return;
+        }
+
+        filtered.forEach((r, idx) => {
+            const tr = document.createElement("tr");
+
+            tr.innerHTML = `
+                <td>${r.index}</td>
+                <td>${r.value}</td>
+                <td><span class="${statusClass(r.status)}">${r.status}</span></td>
+                <td>${formatTimestamp(r.timestamp)}</td>
+                <td>${r.blockNumber ?? "—"}</td>
+                <td class="hash-short">${shortHash(r.txHash)}</td>
+            `;
+            body.appendChild(tr);
+        });
+    }
+function updateZoneDom(key, zoneData) {
+    const alerts = zoneData.alerts ?? 0;
+    const lastValue = zoneData.lastValue;
+    const lastTime = zoneData.lastTime;
+
+    document.getElementById(`zone${key}-alerts`).innerText = alerts;
+    document.getElementById(`zone${key}-value`).innerText =
+        lastValue != null ? lastValue : "--";
+    document.getElementById(`zone${key}-time`).innerText =
+        lastTime ? formatTimestamp(lastTime) : "--";
+
+    const cell = document.getElementById(`zone${key}-cell`);
+    cell.classList.remove("zone-low", "zone-med", "zone-high");
+
+    let levelClass = "zone-low";
+    if (alerts >= 3) levelClass = "zone-high";
+    else if (alerts >= 1) levelClass = "zone-med";
+
+    cell.classList.add(levelClass);
+}
+
+function computeSpatialInsights() {
+    // Base structure for 4 zones
+    const zones = {
+        A: { alerts: 0, lastValue: null, lastTime: null },
+        B: { alerts: 0, lastValue: null, lastTime: null },
+        C: { alerts: 0, lastValue: null, lastTime: null },
+        D: { alerts: 0, lastValue: null, lastTime: null },
+    };
+
+    if (!allReadings.length) {
+        ZONE_KEYS.forEach(k => updateZoneDom(k, zones[k]));
+        return;
+    }
+
+    // Use most recent 40 readings (or fewer if not available)
+    const recent = allReadings.slice(0, 40);
+
+    recent.forEach((r) => {
+        // Simple mapping: reading index → zone (A/B/C/D).
+        // In real hardware you would use sensor ID / location instead.
+        const zoneIndex = r.index % 4;
+        const key = ZONE_KEYS[zoneIndex];
+        const z = zones[key];
+
+        z.lastValue = r.value;
+        z.lastTime = r.timestamp;
+        if (r.status === "Alert") {
+            z.alerts += 1;
+        }
+    });
+
+    ZONE_KEYS.forEach(k => updateZoneDom(k, zones[k]));
+}
+
+    // ----------- Load events -----------
+    async function loadEvents() {
+        try {
+            const res = await fetch(`${API_BASE}/events`);
+            const data = await res.json();
+            const body = document.getElementById("eventsBody");
+            body.innerHTML = "";
+
+            if (!data || !data.length) {
+                body.innerHTML = `<tr><td colspan="6" class="empty-state">
+                    No events emitted yet. Once the contract logs NewReading events, they will appear here.
+                </td></tr>`;
+                return;
+            }
+
+            data.slice().reverse().forEach((ev, idx) => {
+                const val = ev.returnValues?.value ?? "--";
+                const status = ev.returnValues?.status ?? "--";
+
+                const tr = document.createElement("tr");
+                tr.innerHTML = `
+                    <td>${idx + 1}</td>
+                    <td>${ev.blockNumber}</td>
+                    <td class="hash">${shortHash(ev.transactionHash)}</td>
+                    <td>${val}</td>
+                    <td>${status}</td>
+                    <td>${ev.logIndex}</td>
+                `;
+                body.appendChild(tr);
+            });
+        } catch (err) {
+            console.error("Events load error:", err);
+            const body = document.getElementById("eventsBody");
+            body.innerHTML = `<tr><td colspan="6" class="empty-state">
+                Failed to load events from contract.
+            </td></tr>`;
+        }
+    }
+
+    // ----------- Init -----------
+    async function init() {
+        await loadSummary();
+        await loadReadings();
+        await loadEvents();
+    }
+
+    document.addEventListener("DOMContentLoaded", init);
+</script>
+<script>
+function openZonePanel(zone) {
+  document.getElementById("zonePanel").classList.remove("hidden");
+  document.getElementById("zoneId").innerText = zone;
+
+  // simulated values for now
+  document.getElementById("zoneReading").innerText = "420 ppm";
+  document.getElementById("zoneAlerts").innerText = "2";
+}
+</script>
+<script>
+document.querySelectorAll(".zone").forEach(zone => {
+  zone.addEventListener("click", () => {
+    const z = zone.dataset.zone;
+
+    if (PAGE_CONTEXT === "main" && typeof openZonePanel === "function") {
+      openZonePanel(z);
+    } else {
+      // Diagnostic-safe behavior
+      console.log(`Zone ${z} selected`);
+    }
+  });
+});
+
+
+function openZonePanel(zone) {
+  const panel = document.getElementById("zonePanel");
+
+  // Update title
+  panel.querySelector(".zone-title").textContent = `Zone ${zone}`;
+
+  // Show panel
+  panel.classList.remove("hidden");
+}
+
+function closeZonePanel() {
+  const panel = document.getElementById("zonePanel");
+  panel.classList.add("hidden");
+}
+const PAGE_CONTEXT = document.body.dataset.context || "view";
+
+
+  const params = new URLSearchParams(window.location.search);
+  const focus = params.get("focus");
+
+  if (focus) {
+    const targets = {
+      "MongoDB": "totalReadings",
+      "Blockchain": "latestBlockNum",
+      "ML": "avgLast40"
+    };
+
+    const el = document.getElementById(targets[focus]);
+    if (el) {
+      el.style.boxShadow = "0 0 18px rgba(56,189,248,0.9)";
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }
+
+
+</script>
+
+</body>
+</html>

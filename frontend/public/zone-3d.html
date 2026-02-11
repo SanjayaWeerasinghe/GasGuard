@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <title>GasGuard | High-Fidelity Digital Twin</title>
+    <script src="https://cdn.socket.io/4.7.4/socket.io.min.js"></script>
+
+    <style>
+        :root {
+            --neon-blue: #00d4ff; --neon-green: #4ade80; --neon-red: #fb7185;
+            --neon-yellow: #fbbf24; --neon-orange: #fb923c;
+            --panel-bg: rgba(7, 15, 30, 0.9); --border: 1px solid rgba(0, 212, 255, 0.3);
+        }
+        body { margin: 0; background: #000; color: #fff; font-family: 'Segoe UI', sans-serif; overflow: hidden; }
+
+        /* TACTICAL HUD */
+        #hud { position: absolute; inset: 0; pointer-events: none; z-index: 10; padding: 25px; display: flex; flex-direction: column; justify-content: space-between; }
+        .glass { background: var(--panel-bg); border: var(--border); backdrop-filter: blur(12px); padding: 18px; border-radius: 4px; pointer-events: auto; }
+        .sidebar { width: 320px; display: flex; flex-direction: column; gap: 15px; }
+
+        .big-val { font-size: 38px; font-weight: bold; font-family: 'Courier New', monospace; margin: 5px 0; }
+        .label { font-size: 10px; text-transform: uppercase; color: var(--neon-blue); letter-spacing: 2px; }
+
+        .zone-info-card { border-left: 4px solid var(--neon-blue); transition: border-color 0.5s; }
+        .alert-active { border-color: var(--neon-red) !important; animation: pulse-red 1.5s infinite; }
+        .warning-active { border-color: var(--neon-orange) !important; animation: pulse-orange 1.5s infinite; }
+        @keyframes pulse-red { 50% { box-shadow: 0 0 25px var(--neon-red); } }
+        @keyframes pulse-orange { 50% { box-shadow: 0 0 25px var(--neon-orange); } }
+
+        .btn { background: rgba(0,0,0,0.6); border: var(--border); color: #fff; padding: 10px 20px; cursor: pointer; font-size: 11px; text-transform: uppercase; pointer-events: auto; border-radius: 4px; }
+        .btn:hover { background: var(--neon-blue); color: #000; }
+
+        #instructions { position: absolute; bottom: 20px; right: 20px; font-size: 11px; color: var(--neon-blue); opacity: 0.7; }
+
+        /* ZONE STATUS PANEL */
+        .zone-status-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+        .zone-status-item {
+            background: rgba(0,0,0,0.4);
+            border-radius: 6px;
+            padding: 10px;
+            border-left: 3px solid #333;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .zone-status-item:hover { background: rgba(0,212,255,0.1); }
+        .zone-status-name { font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px; color: #a6b0d8; margin-bottom: 4px; }
+        .zone-status-risk { font-size: 13px; font-weight: 700; }
+        .zone-status-ppm { font-size: 11px; color: #a6b0d8; font-family: 'Courier New', monospace; }
+
+        /* CONNECTION INDICATOR */
+        .conn-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+        .conn-dot.online { background: var(--neon-green); box-shadow: 0 0 6px var(--neon-green); }
+        .conn-dot.offline { background: #fb7185; }
+    </style>
+</head>
+<body>
+
+    <div id="hud">
+        <div class="sidebar">
+            <div id="status-card" class="glass zone-info-card">
+                <div class="label" id="current-zone-id">Facility Overview</div>
+                <div id="zone-description" style="font-size: 14px; font-weight: bold; margin-bottom: 5px;">SELECT A ZONE TO INSPECT</div>
+                <div class="big-val" id="ppm-display">--- <span style="font-size:14px; opacity:0.5;">PPM</span></div>
+                <div id="status-txt" style="color:var(--neon-green); font-size: 12px; font-weight: 600;">
+                    <span id="conn-indicator" class="conn-dot offline"></span>
+                    <span id="status-txt-label">CONNECTING...</span>
+                </div>
+            </div>
+
+            <!-- Live Zone Status Panel -->
+            <div class="glass" id="zone-panel">
+                <div class="label">Live Zone Status</div>
+                <div class="zone-status-grid">
+                    <div class="zone-status-item" id="zs-A" onclick="window.focusZoneLive('A')">
+                        <div class="zone-status-name">Zone A — Storage</div>
+                        <div class="zone-status-risk" id="zs-risk-A">--</div>
+                        <div class="zone-status-ppm" id="zs-ppm-A">-- ppm</div>
+                    </div>
+                    <div class="zone-status-item" id="zs-B" onclick="window.focusZoneLive('B')">
+                        <div class="zone-status-name">Zone B — Compression</div>
+                        <div class="zone-status-risk" id="zs-risk-B">--</div>
+                        <div class="zone-status-ppm" id="zs-ppm-B">-- ppm</div>
+                    </div>
+                    <div class="zone-status-item" id="zs-C" onclick="window.focusZoneLive('C')">
+                        <div class="zone-status-name">Zone C — Refinery</div>
+                        <div class="zone-status-risk" id="zs-risk-C">--</div>
+                        <div class="zone-status-ppm" id="zs-ppm-C">-- ppm</div>
+                    </div>
+                    <div class="zone-status-item" id="zs-D" onclick="window.focusZoneLive('D')">
+                        <div class="zone-status-name">Zone D — Utility</div>
+                        <div class="zone-status-risk" id="zs-risk-D">--</div>
+                        <div class="zone-status-ppm" id="zs-ppm-D">-- ppm</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="glass" id="sensor-health-card">
+                <div class="label">Hardware Topology</div>
+                <div id="hardware-list" style="margin-top:10px; font-size: 12px; line-height: 1.6;">
+                    • Gateway: ESP32 Edge Console<br>
+                    • Network: MQTT v3.1.1<br>
+                    • Nodes: 4 Zone Clusters
+                </div>
+            </div>
+        </div>
+
+        <div style="align-self: center; display: flex; gap: 10px;">
+            <button class="btn" onclick="resetView()">Global View</button>
+        </div>
+    </div>
+
+    <div id="instructions">CLICK ZONES TO DEEP DIVE • SCROLL TO ZOOM • LIVE DATA</div>
+
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+        import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+        import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+
+        // --- RISK STATE COLORS ---
+        // NORMAL=blue, LOW_ANOMALY=light green, UNUSUAL=yellow,
+        // ALERT=bright yellow, WARNING=orange, CRITICAL=red
+        const RISK_COLORS = {
+            NORMAL:      { hex: 0x38bdf8, css: '#38bdf8' },
+            LOW_ANOMALY: { hex: 0x4ade80, css: '#4ade80' },
+            UNUSUAL:     { hex: 0xfbbf24, css: '#fbbf24' },
+            ALERT:       { hex: 0xfacc15, css: '#facc15' },
+            WARNING:     { hex: 0xfb923c, css: '#fb923c' },
+            CRITICAL:    { hex: 0xef4444, css: '#ef4444' },
+        };
+
+        // Opacity for zone floors per risk level
+        const RISK_OPACITY = {
+            NORMAL:      0.15,
+            LOW_ANOMALY: 0.20,
+            UNUSUAL:     0.25,
+            ALERT:       0.30,
+            WARNING:     0.35,
+            CRITICAL:    0.45,
+        };
+
+        // Light intensity per risk level
+        const RISK_LIGHT_INTENSITY = {
+            NORMAL:      3,
+            LOW_ANOMALY: 4,
+            UNUSUAL:     5,
+            ALERT:       7,
+            WARNING:     9,
+            CRITICAL:    12,
+        };
+
+        const RISK_SEVERITY = ['NORMAL', 'LOW_ANOMALY', 'UNUSUAL', 'ALERT', 'WARNING', 'CRITICAL'];
+
+        function getRiskColor(risk) {
+            return RISK_COLORS[risk] || RISK_COLORS.NORMAL;
+        }
+
+        // --- ZONE CONFIG ---
+        // Each zone monitors ALL 4 gases (CH4, LPG, CO, H2S)
+        const ZONE_DATA = {
+            A: { name: "Zone A — Storage", sensors: "MQ-2, MQ-4, MQ-7, MQ-136", pos: [-6, 4], height: "Floor" },
+            B: { name: "Zone B — Compression", sensors: "MQ-2, MQ-4, MQ-7, MQ-136", pos: [6, 4], height: "Ceiling" },
+            C: { name: "Zone C — Refinery", sensors: "MQ-2, MQ-4, MQ-7, MQ-136", pos: [-6, -4], height: "Mid" },
+            D: { name: "Zone D — Utility", sensors: "MQ-2, MQ-4, MQ-7, MQ-136", pos: [6, -4], height: "Drain" }
+        };
+
+        const GAS_LABELS = {
+            methane: 'CH4',
+            lpg: 'LPG',
+            carbonMonoxide: 'CO',
+            hydrogenSulfide: 'H2S'
+        };
+
+        function clientIdToZone(clientID) {
+            if (!clientID) return null;
+            if (clientID.includes('A')) return 'A';
+            if (clientID.includes('B')) return 'B';
+            if (clientID.includes('C')) return 'C';
+            if (clientID.includes('D')) return 'D';
+            return null;
+        }
+
+        // --- LIVE DATA STORE ---
+        const liveData = {
+            A: { riskState: 'NORMAL', ppm: 0, gases: {}, leakProb: 0 },
+            B: { riskState: 'NORMAL', ppm: 0, gases: {}, leakProb: 0 },
+            C: { riskState: 'NORMAL', ppm: 0, gases: {}, leakProb: 0 },
+            D: { riskState: 'NORMAL', ppm: 0, gases: {}, leakProb: 0 },
+        };
+
+        let focusedZone = null;
+
+        // --- THREE.JS SETUP ---
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x01050a);
+        scene.fog = new THREE.FogExp2(0x01050a, 0.025);
+
+        const camera = new THREE.PerspectiveCamera(50, window.innerWidth/window.innerHeight, 0.1, 1000);
+        camera.position.set(25, 20, 25);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        document.body.appendChild(renderer.domElement);
+
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+
+        const composer = new EffectComposer(renderer);
+        composer.addPass(new RenderPass(scene, camera));
+        composer.addPass(new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 0.8, 0.4, 0.85));
+
+        // --- LIGHTING ---
+        scene.add(new THREE.AmbientLight(0xffffff, 0.25));
+        const dirLight = new THREE.DirectionalLight(0x00d4ff, 0.8);
+        dirLight.position.set(10, 20, 10);
+        scene.add(dirLight);
+
+        // --- FACILITY FLOOR ---
+        const floorGeo = new THREE.PlaneGeometry(24, 16);
+        const floorMat = new THREE.MeshStandardMaterial({ color: 0x050a14, roughness: 0.8 });
+        const floor = new THREE.Mesh(floorGeo, floorMat);
+        floor.rotation.x = -Math.PI / 2;
+        scene.add(floor);
+
+        const grid = new THREE.GridHelper(24, 24, 0x00d4ff, 0x021626);
+        grid.position.y = 0.01;
+        scene.add(grid);
+
+        // --- ASSET CREATION ---
+        function createCylinder(x, z, h=1.5, color=0x2c3e50) {
+            const geo = new THREE.CylinderGeometry(0.3, 0.3, h, 12);
+            const mat = new THREE.MeshStandardMaterial({ color });
+            const mesh = new THREE.Mesh(geo, mat);
+            mesh.position.set(x, h/2, z);
+            scene.add(mesh);
+        }
+
+        function createEngine(x, z) {
+            const group = new THREE.Group();
+            const body = new THREE.Mesh(new THREE.BoxGeometry(2, 1.5, 3), new THREE.MeshStandardMaterial({color: 0x1a2a3a}));
+            body.position.y = 0.75;
+            group.add(body);
+            const pipe = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 4), new THREE.MeshStandardMaterial({color: 0x0a1a2a}));
+            pipe.position.set(0, 2, 0);
+            group.add(pipe);
+            group.position.set(x, 0, z);
+            scene.add(group);
+        }
+
+        function createPipeline(x, z, length, rot=0) {
+            const geo = new THREE.CylinderGeometry(0.15, 0.15, length, 12);
+            const mat = new THREE.MeshStandardMaterial({ color: 0x334455 });
+            const pipe = new THREE.Mesh(geo, mat);
+            pipe.position.set(x, 2, z);
+            pipe.rotation.z = Math.PI/2;
+            pipe.rotation.y = rot;
+            scene.add(pipe);
+        }
+
+        function createFan(x, y, z, rotY=0) {
+            const group = new THREE.Group();
+            const frame = new THREE.Mesh(new THREE.TorusGeometry(0.5, 0.05, 8, 24), new THREE.MeshBasicMaterial({color: 0x00d4ff}));
+            const blade = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.1, 0.05), new THREE.MeshBasicMaterial({color: 0x00d4ff}));
+            group.add(frame, blade);
+            group.position.set(x, y, z);
+            group.rotation.y = rotY;
+            scene.add(group);
+            return blade;
+        }
+
+        // --- BUILD FACILITY ---
+        createCylinder(-8, 6, 2); createCylinder(-9, 6, 2);
+        const fanA = createFan(-12, 1.5, 6, Math.PI/2);
+        createPipeline(6, 7.8, 12);
+        const fanB = createFan(6, 4.2, 8, 0);
+        createEngine(-8, -5);
+        const fanC = createFan(-12, 1.5, -5, Math.PI/2);
+        const drain = new THREE.Mesh(new THREE.BoxGeometry(8, 0.1, 1), new THREE.MeshStandardMaterial({color: 0x000000}));
+        drain.position.set(6, 0.05, -6);
+        scene.add(drain);
+        const fanD = createFan(10, 0.6, -8, 0);
+
+        const gateway = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.8, 0.2), new THREE.MeshBasicMaterial({color: 0x00d4ff}));
+        gateway.position.set(-11.9, 2, 0);
+        scene.add(gateway);
+
+        // --- PER-ZONE POINT LIGHTS ---
+        const zoneLights = {};
+        ['A', 'B', 'C', 'D'].forEach(id => {
+            const data = ZONE_DATA[id];
+            const color = getRiskColor('NORMAL').hex; // start blue
+            const light = new THREE.PointLight(color, 3, 14);
+            light.position.set(data.pos[0], 4, data.pos[1]);
+            scene.add(light);
+            zoneLights[id] = light;
+        });
+
+        // --- ZONE FLOOR PANELS (the main visual indicator) ---
+        const zoneFloors = {};
+        ['A', 'B', 'C', 'D'].forEach(id => {
+            const data = ZONE_DATA[id];
+            const geo = new THREE.PlaneGeometry(11.5, 7.5);
+            const mat = new THREE.MeshBasicMaterial({
+                color: getRiskColor('NORMAL').hex, // start blue
+                transparent: true,
+                opacity: 0.15,
+                side: THREE.DoubleSide
+            });
+            const mesh = new THREE.Mesh(geo, mat);
+            mesh.rotation.x = -Math.PI / 2;
+            mesh.position.set(data.pos[0], 0.03, data.pos[1]);
+            scene.add(mesh);
+            zoneFloors[id] = mesh;
+        });
+
+        // --- ZONE BORDER OUTLINES ---
+        const zoneBorders = {};
+        ['A', 'B', 'C', 'D'].forEach(id => {
+            const data = ZONE_DATA[id];
+            const w = 11.5, h = 7.5;
+            const shape = new THREE.BufferGeometry().setFromPoints([
+                new THREE.Vector3(-w/2, 0, -h/2),
+                new THREE.Vector3( w/2, 0, -h/2),
+                new THREE.Vector3( w/2, 0,  h/2),
+                new THREE.Vector3(-w/2, 0,  h/2),
+                new THREE.Vector3(-w/2, 0, -h/2),
+            ]);
+            const mat = new THREE.LineBasicMaterial({
+                color: getRiskColor('NORMAL').hex,
+                transparent: true,
+                opacity: 0.6
+            });
+            const line = new THREE.Line(shape, mat);
+            line.position.set(data.pos[0], 0.04, data.pos[1]);
+            scene.add(line);
+            zoneBorders[id] = line;
+        });
+
+        // --- ZONE LABEL SPRITES ---
+        ['A', 'B', 'C', 'D'].forEach(id => {
+            const data = ZONE_DATA[id];
+            const canvas = document.createElement('canvas');
+            canvas.width = 256; canvas.height = 64;
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, 256, 64);
+            ctx.font = 'bold 28px Courier New';
+            ctx.fillStyle = '#ffffff';
+            ctx.textAlign = 'center';
+            ctx.fillText(`ZONE ${id}`, 128, 40);
+            const texture = new THREE.CanvasTexture(canvas);
+            const mat = new THREE.SpriteMaterial({ map: texture, transparent: true, opacity: 0.6 });
+            const sprite = new THREE.Sprite(mat);
+            sprite.position.set(data.pos[0], 5.5, data.pos[1]);
+            sprite.scale.set(4, 1, 1);
+            scene.add(sprite);
+        });
+
+        // --- SOCKET.IO CONNECTION ---
+        const API_BASE = window.location.hostname === 'localhost'
+            ? 'http://localhost:3001'
+            : `http://${window.location.hostname}:3001`;
+
+        const socket = io(API_BASE, {
+            transports: ['websocket', 'polling'],
+            reconnection: true,
+            reconnectionDelay: 2000,
+        });
+
+        socket.on('connect', () => {
+            document.getElementById('conn-indicator').className = 'conn-dot online';
+            document.getElementById('status-txt-label').innerText = 'LIVE — CONNECTED';
+            document.getElementById('status-txt').style.color = 'var(--neon-green)';
+        });
+
+        socket.on('disconnect', () => {
+            document.getElementById('conn-indicator').className = 'conn-dot offline';
+            document.getElementById('status-txt-label').innerText = 'DISCONNECTED';
+            document.getElementById('status-txt').style.color = 'var(--neon-red)';
+        });
+
+        // --- HANDLE SENSOR READINGS ---
+        socket.on('sensor-reading', (data) => {
+            const zone = clientIdToZone(data.clientID);
+            if (!zone) return;
+
+            const gases = {};
+            const gasMap = { 'CH4': 'methane', 'LPG': 'lpg', 'CO': 'carbonMonoxide', 'H2S': 'hydrogenSulfide' };
+            if (data.gases) {
+                Object.assign(gases, data.gases);
+            } else if (data.gasTypes && data.values) {
+                data.gasTypes.forEach((g, i) => {
+                    gases[gasMap[g] || g.toLowerCase()] = data.values[i] || 0;
+                });
+            }
+
+            const maxPpm = Math.max(...Object.values(gases).map(v => Number(v) || 0));
+            liveData[zone].gases = gases;
+            liveData[zone].ppm = maxPpm;
+
+            updateZoneVisuals(zone);
+            updateHudZoneStatus(zone);
+        });
+
+        // --- HANDLE ML PREDICTIONS ---
+        socket.on('ml-prediction', (data) => {
+            const zone = clientIdToZone(data.clientID);
+            if (!zone) return;
+
+            liveData[zone].riskState = data.riskState || 'NORMAL';
+            liveData[zone].leakProb = data.mlResult?.leakProbability || 0;
+
+            updateZoneVisuals(zone);
+            updateHudZoneStatus(zone);
+
+            if (focusedZone === zone) {
+                updateFocusedHud(zone);
+            }
+        });
+
+        // --- UPDATE 3D VISUALS PER ZONE ---
+        function updateZoneVisuals(zone) {
+            const risk = liveData[zone].riskState;
+            const riskColor = getRiskColor(risk);
+
+            // Update zone floor color and opacity
+            const zf = zoneFloors[zone];
+            if (zf) {
+                zf.material.color.setHex(riskColor.hex);
+                zf.material.opacity = RISK_OPACITY[risk] || 0.15;
+            }
+
+            // Update zone border color
+            const zb = zoneBorders[zone];
+            if (zb) {
+                zb.material.color.setHex(riskColor.hex);
+            }
+
+            // Update zone point light
+            const light = zoneLights[zone];
+            if (light) {
+                light.color.setHex(riskColor.hex);
+                light.intensity = RISK_LIGHT_INTENSITY[risk] || 3;
+            }
+        }
+
+        // --- UPDATE HUD ZONE STATUS CARDS ---
+        function updateHudZoneStatus(zone) {
+            const data = liveData[zone];
+            const riskColor = getRiskColor(data.riskState);
+            const severity = RISK_SEVERITY.indexOf(data.riskState);
+
+            const riskEl = document.getElementById(`zs-risk-${zone}`);
+            const ppmEl = document.getElementById(`zs-ppm-${zone}`);
+            const itemEl = document.getElementById(`zs-${zone}`);
+
+            if (riskEl) {
+                riskEl.innerText = data.riskState;
+                riskEl.style.color = riskColor.css;
+            }
+            if (ppmEl) {
+                // Show max PPM across all gases
+                const maxPpm = Math.max(...Object.values(data.gases).map(v => Number(v) || 0), 0);
+                ppmEl.innerText = `${maxPpm.toFixed(1)} ppm (max)`;
+            }
+            if (itemEl) {
+                itemEl.style.borderLeftColor = riskColor.css;
+                if (severity >= 5) {
+                    itemEl.style.background = 'rgba(239,68,68,0.15)';
+                } else if (severity >= 4) {
+                    itemEl.style.background = 'rgba(251,146,60,0.12)';
+                } else if (severity >= 3) {
+                    itemEl.style.background = 'rgba(250,204,21,0.08)';
+                } else {
+                    itemEl.style.background = 'rgba(0,0,0,0.4)';
+                }
+            }
+        }
+
+        // --- UPDATE FOCUSED ZONE HUD ---
+        function updateFocusedHud(zone) {
+            const data = liveData[zone];
+            const zd = ZONE_DATA[zone];
+            const riskColor = getRiskColor(data.riskState);
+            const severity = RISK_SEVERITY.indexOf(data.riskState);
+
+            // Show max PPM across all gases
+            const maxPpm = Math.max(...Object.values(data.gases).map(v => Number(v) || 0), 0);
+            document.getElementById('ppm-display').innerHTML =
+                `${maxPpm.toFixed(1)} <span style="font-size:14px; opacity:0.5;">PPM</span>`;
+            document.getElementById('ppm-display').style.color = riskColor.css;
+
+            const card = document.getElementById('status-card');
+            card.style.borderLeftColor = riskColor.css;
+            card.classList.remove('alert-active', 'warning-active');
+            if (severity >= 5) {
+                card.classList.add('alert-active');
+            } else if (severity >= 4) {
+                card.classList.add('warning-active');
+            }
+
+            // Show all 4 gas readings
+            const gasLines = Object.entries(data.gases).map(([key, val]) => {
+                const label = GAS_LABELS[key] || key;
+                return `• ${label}: ${Number(val).toFixed(1)} ppm`;
+            }).join('<br>');
+
+            document.getElementById('hardware-list').innerHTML = `
+                • Sensors: ${zd.sensors}<br>
+                • Risk: <span style="color:${riskColor.css}; font-weight:700;">${data.riskState}</span><br>
+                • Leak Prob: ${(data.leakProb * 100).toFixed(1)}%<br>
+                <br><strong style="font-size:10px; letter-spacing:1px;">GAS READINGS</strong><br>
+                ${gasLines || '• Awaiting data...'}
+            `;
+        }
+
+        // --- INTERACTIVITY (RAYCASTING) ---
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+
+        window.addEventListener('mousedown', (event) => {
+            if (event.target.closest('#hud')) return;
+
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+            raycaster.setFromCamera(mouse, camera);
+
+            const zoneIntersects = {
+                A: [-12, 0, 0, 8],
+                B: [0, 12, 0, 8],
+                C: [-12, 0, -8, 0],
+                D: [0, 12, -8, 0]
+            };
+
+            for (const [id, bounds] of Object.entries(zoneIntersects)) {
+                const intersect = raycaster.intersectObject(floor);
+                if (intersect.length > 0) {
+                    const p = intersect[0].point;
+                    if (p.x >= bounds[0] && p.x <= bounds[1] && p.z >= bounds[2] && p.z <= bounds[3]) {
+                        focusZone(id);
+                        return;
+                    }
+                }
+            }
+        });
+
+        function focusZone(id) {
+            focusedZone = id;
+            const data = ZONE_DATA[id];
+            const targetPos = new THREE.Vector3(data.pos[0], 0, data.pos[1]);
+
+            const startPos = camera.position.clone();
+            const endPos = new THREE.Vector3(data.pos[0] + 8, 6, data.pos[1] + 8);
+            let t = 0;
+            const anim = () => {
+                t += 0.05;
+                camera.position.lerpVectors(startPos, endPos, t);
+                controls.target.lerp(targetPos, t);
+                if(t < 1) requestAnimationFrame(anim);
+            };
+            anim();
+
+            document.getElementById('current-zone-id').innerText = `ZONE ${id} INTERFACE`;
+            document.getElementById('zone-description').innerText = data.name;
+            updateFocusedHud(id);
+        }
+
+        window.focusZoneLive = focusZone;
+
+        window.resetView = () => {
+            focusedZone = null;
+            controls.target.set(0, 0, 0);
+            camera.position.set(25, 20, 25);
+            document.getElementById('current-zone-id').innerText = "Facility Overview";
+            document.getElementById('zone-description').innerText = "SELECT A ZONE TO INSPECT";
+            document.getElementById('ppm-display').innerHTML = '--- <span style="font-size:14px; opacity:0.5;">PPM</span>';
+            document.getElementById('ppm-display').style.color = '#fff';
+            const card = document.getElementById('status-card');
+            card.classList.remove('alert-active', 'warning-active');
+            card.style.borderLeftColor = 'var(--neon-blue)';
+            document.getElementById('hardware-list').innerHTML = `
+                • Gateway: ESP32 Edge Console<br>
+                • Network: MQTT v3.1.1<br>
+                • Nodes: 4 Zone Clusters
+            `;
+        };
+
+        // --- ANIMATION LOOP ---
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+
+            const time = Date.now() * 0.001;
+
+            // Rotate Fans — spin faster for high-risk zones (ventilation active)
+            const fanSpeed = (zone) => {
+                const sev = RISK_SEVERITY.indexOf(liveData[zone].riskState);
+                return sev >= 4 ? 0.5 : 0.2;
+            };
+            fanA.rotation.z += fanSpeed('A');
+            fanB.rotation.z += fanSpeed('B');
+            fanC.rotation.z += fanSpeed('C');
+            fanD.rotation.z += fanSpeed('D');
+
+            // Pulse zone floors and lights for WARNING/CRITICAL
+            ['A', 'B', 'C', 'D'].forEach(id => {
+                const sev = RISK_SEVERITY.indexOf(liveData[id].riskState);
+                const risk = liveData[id].riskState;
+                if (sev >= 4) {
+                    // WARNING pulses slowly, CRITICAL pulses fast
+                    const speed = sev >= 5 ? 4 : 2;
+                    const pulse = Math.sin(time * speed) * 0.5 + 0.5;
+                    const baseOpacity = RISK_OPACITY[risk] || 0.35;
+                    zoneFloors[id].material.opacity = baseOpacity + pulse * 0.15;
+                    const baseIntensity = RISK_LIGHT_INTENSITY[risk] || 9;
+                    zoneLights[id].intensity = baseIntensity + pulse * 6;
+                }
+            });
+
+            composer.render();
+        }
+        animate();
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            composer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+</body>
+</html>
